@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CineBook · Movie Ticket Booking</title>
+<style>
+  :root{
+    --bg:#0a0c13;
+    --panel:#12161f;
+    --panel-2:#171d29;
+    --line:#242b3b;
+    --text:#e9edf6;
+    --muted:#8a93a8;
+    --accent:#ffc857;
+    --accent-2:#ff5c8a;
+    --ok:#3ad39a;
+    --radius:14px;
+    --seat:26px;
+    --gap:7px;
+  }
+
+  *{box-sizing:border-box}
+
+  html,body{height:100%}
+
+  body{
+    margin:0;
+    font-family:"Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(900px 520px at 12% -8%, rgba(110,90,255,.20), transparent 60%),
+      radial-gradient(820px 500px at 92% -2%, rgba(255,92,138,.16), transparent 58%),
+      var(--bg);
+    background-attachment:fixed;
+    min-height:100vh;
+  }
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    border-bottom:1px solid var(--line);
+    background:rgba(10,12,19,.72);
+    backdrop-filter:blur(10px);
+    position:sticky;top:0;z-index:30;
+  }
+  .topbar-inner{
+    display:flex;align-items:center;justify-content:space-between;
+    height:62px;
+  }
+  .logo{font-size:1.05rem;font-weight:700;letter-spacing:.02em}
+  .logo span{color:var(--accent)}
+  .city{font-size:.78rem;color:var(--muted)}
+  .city strong{color:var(--text)}
+
+  /* ---------- generic ---------- */
+  .section-title{
+    font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 10px;font-weight:600;
+  }
+  main{padding-bottom:70px}
+  section:first-of-type{padding-top:26px}
+
+  /* ---------- movie cards ---------- */
+  .movies{
+    display:flex;gap:14px;overflow-x:auto;padding:4px 2px 14px;
+    scrollbar-width:thin;
+  }
+  .movies::-webkit-scrollbar{height:8px}
+  .movies::-webkit-scrollbar-thumb{background:#232a3a;border-radius:8px}
+
+  .movie{
+    flex:0 0 158px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px;
+    cursor:pointer;
+    font:inherit;color:inherit;text-align:left;
+    transition:transform .2s, border-color .2s, background .2s;
+  }
+  .movie:hover{transform:translateY(-3px);border-color:#39425c}
+  .movie.active{border-color:var(--accent);background:rgba(255,200,87,.07)}
+
+  .poster{
+    aspect-ratio:2/3;border-radius:10px;position:relative;overflow:hidden;
+    display:flex;align-items:flex-end;padding:8px;
+  }
+  .poster::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,transparent 42%,rgba(0,0,0,.72));
+  }
+  .rating{
+    position:relative;z-index:1;font-size:.7rem;font-weight:600;
+    background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.18);
+    padding:2px 7px;border-radius:999px;color:#ffd980;
+  }
+  .movie-title{font-size:.85rem;font-weight:600;margin:9px 2px 3px;line-height:1.25}
+  .movie-meta{font-size:.71rem;color:var(--muted);margin:0 2px 3px}
+
+  /* ---------- layout ---------- */
+  .booking{
+    display:grid;grid-template-columns:1fr 322px;gap:24px;margin-top:26px;
+    align-items:start;
+  }
+  @media(max-width:920px){
+    .booking{grid-template-columns:1fr}
+  }
+
+  /* ---------- chips ---------- */
+  .chips{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+  .chips::-webkit-scrollbar{height:7px}
+  .chips::-webkit-scrollbar-thumb{background:#232a3a;border-radius:8px}
+
+  .chip{
+    flex:0 0 auto;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:11px;
+    padding:9px 15px;
+    font:inherit;font-size:.84rem;line-height:1.3;
+    text-align:center;cursor:pointer;
+    transition:.18s;
+    white-space:nowrap;
+  }
+  .chip small{display:block;font-size:.67rem;color:var(--muted);margin-top:2px}
+  .chip:hover{border-color:#3b4560}
+  .chip.active{
+    background:var(--accent);border-color:var(--accent);
+    color:#1d1500;font-weight:700;
+  }
+  .chip.active small{color:rgba(29,21,0,.7)}
+
+  /* ---------- screen ---------- */
+  .screen-area{margin:30px 0 22px;text-align:center}
+  .screen{
+    height:9px;width:min(72%,520px);margin:0 auto;border-radius:50%;
+    background:linear-gradient(90deg,
+      rgba(159,208,255,0) 0%,
+      rgba(159,208,255,.85) 50%,
+      rgba(159,208,255,0) 100%);
+    box-shadow:0 10px 44px rgba(120,180,255,.42);
+  }
+  .screen-label{
+    font-size:.66rem;letter-spacing:.34em;color:var(--muted);margin-top:12px;
+  }
+
+  /* ---------- seats ---------- */
+  .seat-map{overflow-x:auto;padding:6px 2px 12px}
+  .seat-map::-webkit-scrollbar{height:7px}
+  .seat-map::-webkit-scrollbar-thumb{background:#232a3a;border-radius:8px}
+
+  .seat-row{
+    display:flex;align-items:center;justify-content:center;
+    gap:var(--gap);margin-bottom:var(--gap);
+    min-width:max-content;margin-left:auto;margin-right:auto;
+  }
+  .row-label{
+    flex:0 0 18px;font-size:.68rem;color:var(--muted);text-align:center;
+  }
+  .seat-row-seats{display:flex;gap:var(--gap);align-items:center}
+  .aisle{width:16px;flex:0 0 16px}
+
+  .seat{
+    width:var(--seat);
+    height:calc(var(--seat) * .92);
+    border-radius:6px 6px 4px 4px;
+    border:1px solid transparent;
+    padding:0;font-size:0;cursor:pointer;
+    position:relative;
+    transition:transform .12s ease, background .18s, box-shadow .18s;
+  }
+  .seat[data-tier="regular"] {background:#212b42;border-color:#33415f}
+  .seat[data-tier="premium"] {background:#1d3540;border-color:#2f5c6b}
+  .seat[data-tier="recliner"]{background:#2b2447;border-color:#54468a}
+
+  .seat:not(.occupied):not(.selected):hover{
+    transform:translateY(-2px) scale(1.06);
+    box-shadow:0 0 0 2px rgba(255,255,255,.2);
+  }
+  .seat.selected{
+    background:linear-gradient(180deg,#ffdf99,#ffb320);
+    border-color:#ffe3a3;
+    box-shadow:0 0 14px rgba(255,200,87,.6);
+    transform:translateY(-1px);
+  }
+  .seat.occupied{
+    background:#161a24;border-color:#1f2532;
+    cursor:not-allowed;opacity:.7;
+  }
+  .seat.occupied::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;
+    background:linear-gradient(45deg,transparent 44%,#2b3342 44%,#2b3342 56%,transparent 56%);
+  }
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center;
+    margin-top:16px;font-size:.74rem;color:var(--muted);
+  }
+  .legend-item{display:flex;align-items:center;gap:7px}
+  .swatch{
+    width:16px;height:15px;border-radius:5px;border:1px solid transparent;display:inline-block;
+  }
+  .swatch[data-tier="regular"] {background:#212b42;border-color:#33415f}
+  .swatch[data-tier="premium"] {background:#1d3540;border-color:#2f5c6b}
+  .swatch[data-tier="recliner"]{background:#2b2447;border-color:#54468a}
+  .swatch.selected{background:linear-gradient(180deg,#ffdf99,#ffb320);border-color:#ffe3a3}
+  .swatch.occupied{background:#161a24;border-color:#1f2532}
+
+  /* ---------- summary ---------- */
+  .summary{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px;
+    position:sticky;top:82px;
+  }
+  .summary-title{
+    font-size:.95rem;margin:0 0 16px;font-weight:700;
+  }
+  .sum-movie{display:flex;gap:11px;align-items:center;margin-bottom:16px}
+  .sum-poster{
+    width:44px;height:62px;border-radius:8px;flex:0 0 44px;
+  }
+  .sum-title{font-size:.87rem;font-weight:600;line-height:1.25}
+  .sum-meta{font-size:.71rem;color:var(--muted);margin-top:3px}
+
+  .sum-rows{display:flex;flex-direction:column;gap:9px}
+  .sum-row{
+    display:flex;justify-content:space-between;gap:14px;
+    font-size:.8rem;color:var(--muted);
+  }
+  .sum-row strong,.sum-row span:last-child{color:var(--text);font-weight:600;text-align:right}
+  .sum-row.total{font-size:.98rem;color:var(--text)}
+  .sum-row.total span:last-child{color:var(--accent);font-size:1.1rem;font-weight:700}
+
+  .divider{height:1px;background:var(--line);margin:15px 0}
+
+  .empty{
+    font-size:.78rem;color:var(--muted);text-align:center;
+    padding:16px 6px;line-height:1.5;margin:0;
+  }
+
+  .btn{
+    width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;
+    font:inherit;font-size:.92rem;font-weight:700;
+    background:linear-gradient(135deg,#ffd980,#ffb320);
+    color:#20180a;
+    transition:transform .18s, box-shadow .18s, opacity .18s;
+  }
+  .btn:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(255,190,60,.3)}
+  .btn:disabled{opacity:.38;cursor:not-allowed;filter:grayscale(.35)}
+  .btn.ghost{
+    background:transparent;border:1px solid var(--line);color:var(--text);
+    margin-top:10px;font-weight:600;
+  }
+  .btn.ghost:hover{box-shadow:none;border-color:#3b4560}
+  .fineprint{
+    font-size:.68rem;color:var(--muted);text-align:center;margin:12px 0 0;
+  }
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:60;
+    background:rgba(5,7,12,.76);
+    backdrop-filter:blur(6px);
+    display:grid;place-items:center;padding:20px;
+    opacity:0;pointer-events:none;transition:opacity .22s;
+  }
+  .overlay.show{opacity:1;pointer-events:auto}
+
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    width:min(400px,100%);
+    padding:24px;
+    transform:translateY(16px) scale(.97);
+    transition:transform .24s ease;
+    max-height:92vh;overflow-y:auto;
+  }
+  .overlay.show .modal{transform:none}
+
+  .modal-title{font-size:1.08rem;margin:0 0 4px;font-weight:700}
+  .modal-title.center{text-align:center}
+  .modal-sub{font-size:.79rem;color:var(--muted);margin:0 0 18px}
+  .modal-sub.center{text-align:center}
+
+  .confirm-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:13px;
+    margin-bottom:18px;
+  }
+  .confirm-grid > div{display:flex;flex-direction:column;gap:3px}
+  .confirm-grid span{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .confirm-grid strong{font-size:.85rem;font-weight:600}
+
+  .success-badge{
+    width:56px;height:56px;border-radius:50%;
+    background:rgba(58,211,154,.13);
+    border:1px solid rgba(58,211,154,.45);
+    color:var(--ok);
+    display:grid;place-items:center;
+    font-size:1.6rem;margin:0 auto 14px;
+  }
+
+  .ticket{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    background:var(--panel-2);
+    margin-bottom:16px;
+  }
+  .ticket-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .ticket-title{font-size:.9rem;font-weight:700}
+  .ticket-meta{font-size:.73rem;color:var(--muted);margin-top:4px}
+  .ticket-id{
+    font-size:.68rem;color:var(--accent);border:1px dashed rgba(255,200,87,.5);
+    padding:3px 8px;border-radius:7px;white-space:nowrap;
+  }
+  .ticket-dash{
+    height:1px;margin:14px 0;
+    background-image:linear-gradient(90deg,#2b3346 55%,transparent 0);
+    background-size:12px 1px;
+  }
+  .ticket-bottom{display:flex;justify-content:space-between;gap:12px;font-size:.76rem}
+  .ticket-bottom span{display:block;color:var(--muted);font-size:.66rem;
+    text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+  .ticket-bottom strong{font-weight:600}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);
+    background:#1c2333;border:1px solid var(--line);
+    color:var(--text);font-size:.8rem;
+    padding:11px 18px;border-radius:11px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:80;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- responsive seats ---------- */
+  @media(max-width:760px){
+    :root{--seat:20px;--gap:5px}
+    .summary{position:static}
+  }
+  @media(max-width:520px){
+    :root{--seat:16px;--gap:3px}
+    .aisle{width:10px;flex:0 0 10px}
+    .wrap{padding:0 14px}
+    .movie{flex:0 0 140px}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="logo">🎬 Cine<span>Book</span></div>
+    <div class="city">Now showing in <strong>Mumbai</strong></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- Movies -->
+  <section>
+    <h2 class="section-title">Choose a movie</h2>
+    <div class="movies" id="movies"></div>
+  </section>
+
+  <!-- Booking -->
+  <section class="booking">
+
+    <div class="booking-main">
+      <h2 class="section-title">Pick a date</h2>
+      <div class="chips" id="dates"></div>
+
+      <h2 class="section-title" style="margin-top:22px">Showtime</h2>
+      <div class="chips" id="shows"></div>
+
+      <div class="screen-area">
+        <div class="screen"></div>
+        <div class="screen-label">SCREEN</div>
+      </div>
+
+      <div class="seat-map" id="seats"></div>
+
+      <div class="legend">
+        <span class="legend-item"><i class="swatch" data-tier="regular"></i> Regular · ₹200</span>
+        <span class="legend-item"><i class="swatch" data-tier="premium"></i> Premium · ₹300</span>
+        <span class="legend-item"><i class="swatch" data-tier="recliner"></i> Recliner · ₹450</span>
+        <span class="legend-item"><i class="swatch selected"></i> Selected</span>
+        <span class="legend-item"><i class="swatch occupied"></i> Sold</span>
+      </div>
+    </div>
+
+    <aside class="summary">
+      <h2 class="summary-title">Your selection</h2>
+      <div id="summaryBody"></div>
+      <button class="btn" id="bookBtn" disabled>Select seats</button>
+      <p class="fineprint">Seats are held for 5 minutes after selection.</p>
+    </aside>
+
+  </section>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const MOVIES = [
+  { id:'m1', title:'Neon Horizon',    meta:'Sci-Fi · 2h 18m · UA', rating:8.6,
+    poster:'linear-gradient(150deg,#3a1c71,#d76d77,#ffaf7b)' },
+  { id:'m2', title:'The Last Monsoon',meta:'Drama · 2h 04m · U',   rating:8.1,
+    poster:'linear-gradient(150deg,#0f2027,#203a43,#2c5364)' },
+  { id:'m3', title:'Iron Verdict',    meta:'Action · 2h 32m · A',  rating:7.8,
+    poster:'linear-gradient(150deg,#232526,#414345,#8e0e00)' },
+  { id:'m4', title:'Paper Moonlight', meta:'Romance · 1h 52m · U', rating:8.3,
+    poster:'linear-gradient(150deg,#42275a,#734b6d,#c9a7eb)' },
+  { id:'m5', title:'Hollow Creek',    meta:'Horror · 1h 46m · A',  rating:7.4,
+    poster:'linear-gradient(150deg,#141e30,#243b55,#3c1053)' }
+];
+
+const TIERS = {
+  recliner: { label:'Recliner', price:450 },
+  premium:  { label:'Premium',  price:300 },
+  regular:  { label:'Regular',  price:200 }
+};
+
+const ROWS = [
+  { row:'A', tier:'recliner', seats:10 },
+  { row:'B', tier:'recliner', seats:10 },
+  { row:'C', tier:'premium',  seats:14 },
+  { row:'D', tier:'premium',  seats:14 },
+  { row:'E', tier:'premium',  seats:14 },
+  { row:'F', tier:'regular',  seats:16 },
+  { row:'G', tier:'regular',  seats:16 },
+  { row:'H', tier:'regular',  seats:16 },
+  { row:'I', tier:'regular',  seats:16 }
+];
+
+const SHOWS = ['10:15 AM','1:30 PM','4:45 PM','7:20 PM','10:40 PM'];
+
+const CONVENIENCE_FEE = 30;
+const MAX_SEATS = 10;
+const TOTAL_SEATS = ROWS.reduce((sum, r) => sum + r.seats, 0);
+
+/* ============================================================
+   DATES
+   ============================================================ */
+const DATES = (() => {
+  const out = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const weekday = d.toLocaleDateString('en-US', { weekday:'short' });
+    out.push({
+      label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : weekday,
+      sub: d.toLocaleDateString('en-US', { day:'numeric', month:'short' }),
+      full: d.toLocaleDateString('en-US', { weekday:'short', day:'numeric', month:'short' }),
+      short: weekday + ', ' + d.toLocaleDateString('en-US', { day:'numeric', month:'short' })
+    });
+  }
+  return out;
+})();
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  movieId: MOVIES[0].id,
+  dateIndex: 0,
+  showIndex: 2,
+  selections: new Map()   // showKey -> Set(seatId)
+};
+
+const occupiedCache = new Map();
+let pendingBooking = null;
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const el = id => document.getElementById(id);
+
+const moviesEl  = el('movies');
+const datesEl   = el('dates');
+const showsEl   = el('shows');
+const seatsEl   = el('seats');
+const summaryEl = el('summaryBody');
+const bookBtn   = el('bookBtn');
+const overlay   = el('overlay');
+const modal     = el('modal');
+
+const getMovie = () => MOVIES.find(m => m.id === state.movieId);
+const fmt = n => Math.round(n).toLocaleString('en-IN');
+const showKey = () => `${state.movieId}|${state.dateIndex}|${state.showIndex}`;
+
+function hash(str){
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function occupiedFor(key){
+  if (!occupiedCache.has(key)){
+    const rnd = mulberry32(hash(key));
+    const set = new Set();
+    ROWS.forEach(r => {
+      for (let i = 1; i <= r.seats; i++){
+        if (rnd() < 0.27) set.add(r.row + i);
+      }
+    });
+    occupiedCache.set(key, set);
+  }
+  return occupiedCache.get(key);
+}
+
+function getSelection(){
+  const key = showKey();
+  if (!state.selections.has(key)) state.selections.set(key, new Set());
+  return state.selections.get(key);
+}
+
+function tierOf(seatId){
+  const r = ROWS.find(x => x.row === seatId[0]);
+  return r ? r.tier : 'regular';
+}
+
+function seatSort(a, b){
+  if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+  return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
+}
+
+function toast(msg){
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   RENDER: MOVIES
+   ============================================================ */
+function renderMovies(){
+  moviesEl.innerHTML = '';
+  MOVIES.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'movie' + (m.id === state.movieId ? ' active' : '');
+    b.dataset.id = m.id;
+    b.innerHTML = `
+      <div class="poster" style="background:${m.poster}">
+        <span class="rating">★ ${m.rating}</span>
+      </div>
+      <div class="movie-title">${m.title}</div>
+      <div class="movie-meta">${m.meta}</div>
+    `;
+    moviesEl.appendChild(b);
+  });
+}
+
+/* ============================================================
+   RENDER: DATES
+   ============================================================ */
+function renderDates(){
+  datesEl.innerHTML = '';
+  DATES.forEach((d, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (i === state.dateIndex ? ' active' : '');
+    b.dataset.index = i;
+    b.innerHTML = `<span>${d.label}</span><small>${d.sub}</small>`;
+    datesEl.appendChild(b);
+  });
+}
+
+/* ============================================================
+   RENDER: SHOWS
+   ============================================================ */
+function renderShows(){
+  showsEl.innerHTML = '';
+  SHOWS.forEach((time, i) => {
+    const key = `${state.movieId}|${state.dateIndex}|${i}`;
+    const ratio = occupiedFor(key).size / TOTAL_SEATS;
+    const status = ratio > 0.72 ? 'Almost full' : ratio > 0.42 ? 'Filling fast' : 'Available';
+
+    const b = document.createElement('button');
+    b.className = 'chip' + (i === state.showIndex ? ' active' : '');
+    b.dataset.index = i;
+    b.innerHTML = `<span>${time}</span><small>${status}</small>`;
+    showsEl.appendChild(b);
+  });
+}
+
+/* ============================================================
+   RENDER: SEATS
+   ============================================================ */
+function renderSeats(){
+  const occ = occupiedFor(showKey());
+  const sel = getSelection();
+  seatsEl.innerHTML = '';
+
+  ROWS.forEach(r => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'seat-row';
+
+    const label = document.createElement('span');
+    label.className = 'row-label';
+    label.textContent = r.row;
+    rowEl.appendChild(label);
+
+    const inner = document.createElement('div');
+    inner.className = 'seat-row-seats';
+
+    const mid = Math.floor(r.seats / 2);
+    const hasAisle = r.seats >= 14;
+
+    for (let i = 1; i <= r.seats; i++){
+      const id = r.row + i;
+      const b = document.createElement('button');
+      b.className = 'seat';
+      b.dataset.seat = id;
+      b.dataset.tier = r.tier;
+      b.setAttribute('aria-label', `Seat ${id} (${TIERS[r.tier].label})`);
+
+      if (occ.has(id)){
+        b.classList.add('occupied');
+        b.disabled = true;
+        b.setAttribute('aria-disabled', 'true');
+      }
+      if (sel.has(id)) b.classList.add('selected');
+
+      inner.appendChild(b);
+
+      if (hasAisle && i === mid){
+        const sp = document.createElement('span');
+        sp.className = 'aisle';
+        inner.appendChild(sp);
+      }
+    }
+
+    rowEl.appendChild(inner);
+    seatsEl.appendChild(rowEl);
+  });
+}
+
+/* ============================================================
+   RENDER: SUMMARY
+   ============================================================ */
+function renderSummary(){
+  const movie = getMovie();
+  const sel = [...getSelection()].sort(seatSort);
+  const date = DATES[state.dateIndex];
+  const time = SHOWS[state.showIndex];
+
+  let html = `
+    <div class="sum-movie">
+      <div class="sum-poster" style="background:${movie.poster}"></div>
+      <div>
+        <div class="sum-title">${movie.title}</div>
+        <div class="sum-meta">${movie.meta}</div>
+      </div>
+    </div>
+    <div class="sum-rows">
+      <div class="sum-row"><span>Date</span><strong>${date.short}</strong></div>
+      <div class="sum-row"><span>Show</span><strong>${time}</strong></div>
+      <div class="sum-row"><span>Seats</span><strong>${sel.length ? sel.join(', ') : '—'}</strong></div>
+    </div>
+  `;
+
+  if (sel.length){
+    const groups = {};
+    sel.forEach(id => {
+      const t = tierOf(id);
+      groups[t] = (groups[t] || 0) + 1;
+    });
+
+    let subtotal = 0;
+    let lines = '';
+    ['recliner','premium','regular'].forEach(t => {
+      if (!groups[t]) return;
+      const amt = TIERS[t].price * groups[t];
+      subtotal += amt;
+      lines += `<div class="sum-row"><span>${TIERS[t].label} × ${groups[t]}</span><span>₹${fmt(amt)}</span></div>`;
+    });
+
+    const fee = sel.length * CONVENIENCE_FEE;
+    const total = subtotal + fee;
+
+    html += `
+      <div class="divider"></div>
+      ${lines}
+      <div class="sum-row" style="margin-top:9px"><span>Convenience fee</span><span>₹${fmt(fee)}</span></div>
+      <div class="divider"></div>
+      <div class="sum-row total"><span>Total</span><span>₹${fmt(total)}</span></div>
+    `;
+
+    bookBtn.disabled = false;
+    bookBtn.textContent = `Book ${sel.length} seat${sel.length > 1 ? 's' : ''} · ₹${fmt(total)}`;
+  } else {
+    html += `<p class="empty">Pick your seats from the layout<br>to see the total.</p>`;
+    bookBtn.disabled = true;
+    bookBtn.textContent = 'Select seats';
+  }
+
+  summaryEl.innerHTML = html;
+}
+
+/* ============================================================
+   INTERACTIONS
+   ============================================================ */
+moviesEl.addEventListener('click', e => {
+  const card = e.target.closest('.movie');
+  if (!card) return;
+  state.movieId = card.dataset.id;
+  renderMovies();
+  renderShows();
+  renderSeats();
+  renderSummary();
+});
+
+datesEl.addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  state.dateIndex = Number(chip.dataset.index);
+  renderDates();
+  renderShows();
+  renderSeats();
+  renderSummary();
+});
+
+showsEl.addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  state.showIndex = Number(chip.dataset.index);
+  renderShows();
+  renderSeats();
+  renderSummary();
+});
+
+seatsEl.addEventListener('click', e => {
+  const btn = e.target.closest('.seat');
+  if (!btn || btn.disabled) return;
+
+  const id = btn.dataset.seat;
+  const sel = getSelection();
+
+  if (sel.has(id)){
+    sel.delete(id);
+    btn.classList.remove('selected');
+  } else {
+    if (sel.size >= MAX_SEATS){
+      toast(`You can select up to ${MAX_SEATS} seats per booking.`);
+      return;
+    }
+    sel.add(id);
+    btn.classList.add('selected');
+  }
+
+  renderSummary();
+});
+
+/* ============================================================
+   BOOKING FLOW
+   ============================================================ */
+bookBtn.addEventListener('click', () => {
+  const movie = getMovie();
+  const sel = [...getSelection()].sort(seatSort);
+  if (!sel.length) return;
+
+  const groups = {};
+  sel.forEach(id => {
+    const t = tierOf(id);
+    groups[t] = (groups[t] || 0) + 1;
+  });
+
+  let subtotal = 0;
+  Object.entries(groups).forEach(([t, c]) => { subtotal += TIERS[t].price * c; });
+  const fee = sel.length * CONVENIENCE_FEE;
+
+  pendingBooking = {
+    key: showKey(),
+    movie,
+    dateLabel: DATES[state.dateIndex].short,
+    show: SHOWS[state.showIndex],
+    seats: sel,
+    total: subtotal + fee,
+    id: 'CB-' + Math.random().toString(36).slice(2, 8).toUpperCase()
+  };
+
+  renderConfirmStep();
+  overlay.classList.add('show');
+});
+
+function renderConfirmStep(){
+  const b = pendingBooking;
+  modal.innerHTML = `
+    <h3 class="modal-title">Confirm booking</h3>
+    <p class="modal-sub">${b.movie.title}</p>
+
+    <div class="confirm-grid">
+      <div><span>Date</span><strong>${b.dateLabel}</strong></div>
+      <div><span>Show</span><strong>${b.show}</strong></div>
+      <div><span>Seats</span><strong>${b.seats.join(', ')}</strong></div>
+      <div><span>Tickets</span><strong>${b.seats.length}</strong></div>
+    </div>
+
+    <div class="sum-row total" style="margin-bottom:18px">
+      <span>Amount payable</span><span>₹${fmt(b.total)}</span>
+    </div>
+
+    <button class="btn" id="confirmBtn">Confirm &amp; Pay ₹${fmt(b.total)}</button>
+    <button class="btn ghost" id="cancelBtn">Cancel</button>
+  `;
+
+  el('confirmBtn').addEventListener('click', finalizeBooking);
+  el('cancelBtn').addEventListener('click', closeModal);
+}
+
+function finalizeBooking(){
+  const b = pendingBooking;
+  if (!b) return;
+
+  // Mark seats as sold
+  const occ = occupiedFor(b.key);
+  b.seats.forEach(s => occ.add(s));
+
+  // Clear selection for that show
+  state.selections.set(b.key, new Set());
+
+  renderTicketStep(b);
+  renderShows();
+  renderSeats();
+  renderSummary();
+}
+
+function renderTicketStep(b){
+  modal.innerHTML = `
+    <div class="success-badge">✓</div>
+    <h3 class="modal-title center">Booking confirmed!</h3>
+    <p class="modal-sub center">Show this e-ticket at the entrance</p>
+
+    <div class="ticket">
+      <div class="ticket-top">
+        <div>
+          <div class="ticket-title">${b.movie.title}</div>
+          <div class="ticket-meta">${b.dateLabel} · ${b.show}</div>
+        </div>
+        <div class="ticket-id">${b.id}</div>
+      </div>
+      <div class="ticket-dash"></div>
+      <div class="ticket-bottom">
+        <div><span>Seats</span><strong>${b.seats.join(', ')}</strong></div>
+        <div style="text-align:right"><span>Paid</span><strong>₹${fmt(b.total)}</strong></div>
+      </div>
+    </div>
+
+    <button class="btn" id="doneBtn">Done</button>
+  `;
+
+  el('doneBtn').addEventListener('click', closeModal);
+}
+
+function closeModal(){
+  overlay.classList.remove('show');
+  pendingBooking = null;
+}
+
+overlay.addEventListener('click', e => {
+  if (e.target === overlay) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && overlay.classList.contains('show')) closeModal();
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  renderMovies();
+  renderDates();
+  renderShows();
+  renderSeats();
+  renderSummary();
+}
+
+init();
+</script>
+</body>
+</html>
